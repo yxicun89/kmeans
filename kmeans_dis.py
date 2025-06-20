@@ -542,10 +542,6 @@ FEATURE_WEIGHTS = np.array([
 
 # --- 距離関数（重み付きユークリッド距離、マンハッタン距離、コサイン距離） ---
 def dist(c, s, metric='euclidean', weights=None):
-    """
-    2つの点 c と s 間の距離を計算します。
-    重みが指定されている場合、重み付き距離を計算します。
-    """
     if metric == 'euclidean':
         if weights is None:
             return np.linalg.norm(c - s)
@@ -571,28 +567,12 @@ def dist(c, s, metric='euclidean', weights=None):
 
 # --- K-means++ 初期化 ---
 def initialize_centroids(X_data, k):
-    """
-    K-means++アルゴリズムを使用してセントロイドを初期化します。
-    """
     kmeans = KMeans(n_clusters=k, init='k-means++', n_init='auto', random_state=42)
     kmeans.fit(X_data)
     return kmeans.cluster_centers_
 
 # --- 一般的なK-meansクラスタリングアルゴリズム（履歴記録つき） ---
 def general_kmeans_algorithm(X_data, k, metric='euclidean', weights=None, max_iterations=100):
-    """
-    一般的なK-meansクラスタリングアルゴリズムを実行し、セントロイドの履歴を記録します。
-
-    Args:
-        X_data (np.ndarray): クラスタリング対象のデータ。
-        k (int): クラスターの数。
-        metric (str): 距離関数の種類 ('euclidean', 'manhattan', 'cosine')。
-        weights (np.ndarray, optional): 各特徴量に適用する重み。
-        max_iterations (int): 最大イテレーション数。
-
-    Returns:
-        tuple: 最終的なセントロイド、最終的なラベル、セントロイドの履歴。
-    """
     C = initialize_centroids(X_data, k)
     centroid_history = [C.copy()]
 
@@ -631,12 +611,8 @@ def general_kmeans_algorithm(X_data, k, metric='euclidean', weights=None, max_it
 
     return C, final_labels, centroid_history
 
-# --- クラスタリングアルゴリズム（正解判定関数利用＆履歴記録つき） ---
+# --- クラスタリングアルゴリズム（正解判定関数利用)---
 def clustering_algorithm_with_correctness(X_stream, k, is_correct_fn, metric='euclidean', initial_X_data_for_kmeans_init=None, weights=None):
-    """
-    正解判定関数を利用してセントロイドを更新するK-meansのようなクラスタリングアルゴリズム。
-    データストリームを順次処理します。
-    """
     if initial_X_data_for_kmeans_init is None:
         raise ValueError("initial_X_data_for_kmeans_init must be provided for KMeans++ initialization.")
 
@@ -649,7 +625,7 @@ def clustering_algorithm_with_correctness(X_stream, k, is_correct_fn, metric='eu
         dists = [dist(c, S, metric, weights=weights) for c in C]
         min_c = np.argmin(dists) # 割り当てられたクラスターのインデックス
 
-        N[min_c] += 1 # そのクラスターに割り当てられたデータポイント数をカウント
+        N[min_c] += 1
 
         # 正解判定関数がTrueを返した場合にのみセントロイドを更新
         if is_correct_fn(S, min_c):
@@ -658,7 +634,7 @@ def clustering_algorithm_with_correctness(X_stream, k, is_correct_fn, metric='eu
 
         centroid_history.append(C.copy())
 
-    # 最終的なラベル付け (プロット用)
+    # 最終的なラベル付け
     final_labels = np.zeros(len(initial_X_data_for_kmeans_init), dtype=int)
     for i, S in enumerate(initial_X_data_for_kmeans_init):
         dists = [dist(c, S, metric, weights=weights) for c in C]
@@ -668,11 +644,8 @@ def clustering_algorithm_with_correctness(X_stream, k, is_correct_fn, metric='eu
 
 # --- 正解判定関数を生成するファクトリ関数（教師あり） ---
 def is_correct_fn_factory(true_centers):
-    """
-    真のクラスター中心に基づいて、データポイントが正しいクラスターに割り当てられたかを判定する関数を生成します。
-    """
     if true_centers is None:
-        # 真のクラスター中心がない場合は、常にTrueを返す（ただし、このアルゴリズムでは推奨されない）
+        # 真のクラスター中心がない場合は、常にTrueを返す
         print("Warning: No true_centers provided for correctness check. The algorithm will always consider an assignment 'correct'. This might not be the intended use.")
         return lambda S, assigned_cluster_idx: True
 
@@ -687,14 +660,9 @@ def is_correct_fn_factory(true_centers):
 
 # --- データセット作成関数 ---
 def create_dataset(dataset_name: str, n_samples: int = 300):
-    """
-    指定された名前のデータセットを生成し、特徴量データXと真のラベルy_trueを返す。
-    また、データセットの特性に合わせたk_clustersとn_featuresも返す。
-    真のセントロイドは、該当する場合に計算される。
-    """
     if dataset_name == 'blobs':
         k_clusters = 3
-        n_features = 11 # FEATURE_WEIGHTSに合わせる
+        n_features = 11
         X, y_true = make_blobs(n_samples=n_samples,
                                centers=k_clusters,
                                n_features=n_features,
@@ -719,12 +687,10 @@ def create_dataset(dataset_name: str, n_samples: int = 300):
         k_clusters = len(np.unique(y_true)) # 3クラス
         n_features = X.shape[1] # 13特徴量
     elif dataset_name == 'random':
-        # このアルゴリズムでは真のクラスターが存在しないため、適用は推奨されない
-        # しかし実験のため生成する
         k_clusters = 3
         n_features = 2
         X = np.random.rand(n_samples, n_features) * 10
-        y_true = np.zeros(n_samples) # ダミーのラベル
+        y_true = np.zeros(n_samples)
     elif dataset_name == 'clustered_random':
         k_clusters = 3
         n_features = 2
@@ -834,12 +800,12 @@ def create_dataset(dataset_name: str, n_samples: int = 300):
 
         # クラスターAのデータを生成
         X_A = np.random.normal(loc=center_A, scale=std_A, size=(n_samples_per_cluster, n_features))
-        X_A = np.maximum(0, X_A) # マイナスの値は0にクリップ (特徴量が非負のため)
+        X_A = np.maximum(0, X_A)
         y_A = np.full(n_samples_per_cluster, 0)
 
         # クラスターBのデータを生成
         X_B = np.random.normal(loc=center_B, scale=std_B, size=(n_samples_per_cluster, n_features))
-        X_B = np.maximum(0, X_B) # マイナスの値は0にクリップ
+        X_B = np.maximum(0, X_B)
         y_B = np.full(n_samples_per_cluster, 1)
 
         X = np.vstack([X_A, X_B])
@@ -858,14 +824,10 @@ def create_dataset(dataset_name: str, n_samples: int = 300):
 
     return X, y_true, k_clusters, n_features, true_centers_calc
 
-# --- 最終的なセントロイドと真のセントロイド間の平均最小距離を計算するヘルパー関数 ---
+# --- 最終的なセントロイドと真のセントロイド間の平均最小距離を計算する---
 def calculate_average_min_centroid_distance(final_centroids, true_centers):
-    """
-    K-meansの最終セントロイドと真のセントロイド間の平均最小ユークリッド距離を計算します。
-    クラスターの順序の不一致を考慮します。
-    """
     if final_centroids is None or true_centers is None:
-        return np.nan # どちらかがNoneの場合はNaNを返す
+        return np.nan
 
     num_final = final_centroids.shape[0]
     num_true = true_centers.shape[0]
@@ -883,12 +845,11 @@ def calculate_average_min_centroid_distance(final_centroids, true_centers):
 
     return np.mean(min_distances)
 
-# --- メイン関数 ---
 def main(algorithm_type: str, dataset_name: str):
     # データセットの生成
     X, y_true, k_clusters, n_features, true_centers = create_dataset(dataset_name)
 
-    # PCAを適用するかどうかのフラグ (2次元データの場合は不要、高次元の場合に適用)
+    # PCAを適用するかどうかのフラグ
     apply_pca = n_features > 2
 
     # ランダムデータセットの場合の警告 (正解判定ありK-means用)
@@ -977,8 +938,8 @@ def main(algorithm_type: str, dataset_name: str):
         ax.set_title(f"{algo_title} on {dataset_name.capitalize()} Dataset - ステップ {current_frame + 1} / {len(history_2d)}" + plot_title_suffix)
         return centers_scatter,
 
-    # アニメーションの速度を調整 (必要に応じて)
-    ani = FuncAnimation(fig, update, frames=len(history_2d), interval=500, blit=True, repeat=False) # 例: 500ms
+    # アニメーションの速度を調整
+    ani = FuncAnimation(fig, update, frames=len(history_2d), interval=50, blit=True, repeat=False) # 例: 500ms
 
     # 画像ファイル名を設定
     output_filename = f"kmeans_result_{dataset_name}_{algorithm_type}.png"
@@ -989,12 +950,12 @@ def main(algorithm_type: str, dataset_name: str):
     if true_centers is not None and not np.isnan(centroid_distance):
         print(f"最終セントロイドと真のセントロイド間の平均最小距離: {centroid_distance:.4f}")
     elif dataset_name == 'random':
-        print("注: ランダムデータには真のクラスターがないため、セントロイド距離は計算されません。")
+        print("ランダムデータには真のクラスターがないため、セントロイド距離は計算されません。")
     else:
-        print("注: 真のセントロイドが存在しないため、セントロイド距離は計算されません。")
+        print("真のセントロイドが存在しないため、セントロイド距離は計算されません。")
 
     if apply_pca:
-        print("\n注: プロットはPCAにより2次元に削減されたデータを使用しています。")
+        print("\nプロットはPCAにより2次元に削減されたデータを使用しています。")
     print("-" * 50)
 
     # プロットを画像ファイルとして保存
@@ -1004,13 +965,7 @@ def main(algorithm_type: str, dataset_name: str):
     # プロットを表示
     plt.show()
 
-# ... (if __name__ == '__main__': ブロックは変更なし) ...
-
 if __name__ == '__main__':
-    print("異なるアルゴリズムとデータセットでのK-meansクラスタリングを開始します。")
-
-    # --- K-meansアルゴリズムの比較 ---
-    # 特に挙動の違いが出やすいデータセットで両方のアルゴリズムを試します。
 
     print("\n=== Overlapping Blobs Dataset: アルゴリズム比較 ===")
     main(algorithm_type='general', dataset_name='overlapping_blobs')
@@ -1024,22 +979,14 @@ if __name__ == '__main__':
     main(algorithm_type='general', dataset_name='moons')
     main(algorithm_type='correctness_guided', dataset_name='moons')
 
-    # --- ソースコード特徴量データセット ---
-    # このデータセットではFEATURE_WEIGHTSが適用されます。
+    # --- ソースコード特徴量類似データセット ---
     print("\n=== Code Features Dataset: 重み付きクラスタリング比較 ===")
     main(algorithm_type='general', dataset_name='code_features')
     main(algorithm_type='correctness_guided', dataset_name='code_features')
 
     # --- その他のデータセット (一般的なK-meansでのみ実行) ---
-    # 真のラベルがない、あるいは比較のメリットが薄いデータセット
     print("\n=== Other Datasets (General K-means): ===")
-    main(algorithm_type='general', dataset_name='blobs')
     main(algorithm_type='general', dataset_name='clustered_random')
-    main(algorithm_type='general', dataset_name='iris')
-    main(algorithm_type='general', dataset_name='wine')
+    main(algorithm_type='correctness_guided', dataset_name='clustered_random') # clustered_randomは正解判定ありK-meansでも実行可能
     main(algorithm_type='general', dataset_name='random')
-
-    print("\n全てのデータセットでの動作確認が完了しました。")
-    print("各データセットの結果ウィンドウを閉じると、次のデータセットが表示されます。")
-    print("Warning: FEATURE_WEIGHTSは'blobs'と'code_features'データセットのみに適用されています。")
-    print("他のデータセットに適用するには、各データセットのn_featuresに合わせてFEATURE_WEIGHTSの次元を調整する必要があります。")
+    main(algorithm_type='correctness_guided', dataset_name='random') # randomは正解判定ありK-meansでは実行しないことを推奨
